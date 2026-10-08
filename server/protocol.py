@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 from PIL import Image
 
-VALID_MODES = ("generate", "edit", "inpaint", "instruct")
+VALID_MODES = ("generate", "edit", "inpaint", "instruct", "pose")
 VALID_BACKGROUNDS = ("auto", "remove", "keep")
 MAX_SIDE = 4096      # a sprite side; well past pixel art, guards allocations
 MAX_VARIANTS = 8     # matches the panel's slider
@@ -125,6 +125,8 @@ def parse_request(text: str) -> Request:
         raise ProtocolError(f"mode '{mode}' requires a frame image")
     if mode == "inpaint" and frames[0].mask is None:
         raise ProtocolError("inpaint requires a mask")
+    if mode == "pose" and (len(frames) not in (1, 2) or any(f.image is None for f in frames)):
+        raise ProtocolError("pose requires a source image and optional guide image")
 
     seed = data.get("seed")
     if seed is not None:

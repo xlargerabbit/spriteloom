@@ -48,6 +48,8 @@ def stage_release(exe: Path, stage: Path) -> None:
     stage.mkdir(parents=True)
     shutil.copy2(exe, stage / "Spriteloom.exe")
     copy_files(ROOT, stage, ["README.md", "LICENSE", "start-server.bat", "install-plugin.bat"])
+    copy_files(ROOT / "docs", stage / "docs",
+               ["MCP_IMPLEMENTATION_PLAN.md", "POSE_GUIDED_ANIMATION_EVALUATION.md"])
     copy_files(ROOT / "server", stage / "server",
                [p.name for p in (ROOT / "server").glob("*.py")] + ["requirements.txt"])
     # MCP autostart imports launcher.server_proc from the extracted folder.

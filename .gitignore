@@ -1,6 +1,7 @@
 # Local-only: design docs, sample sprites, agent scratch
 docs/*
 !docs/MCP_IMPLEMENTATION_PLAN.md
+!docs/POSE_GUIDED_ANIMATION_EVALUATION.md
 samples/
 .superpowers/
 

@@ -220,6 +220,49 @@ def test_edit_crops_small_subject_to_fill_frame(server_thread):
     assert opaque > 1500, f"subject collapsed: only {opaque}/4096 opaque px"
 
 
+def test_pose_keeps_canvas_position_with_or_without_guide(server_thread):
+    from server import models
+
+    class PoseKlein(FakeKlein):
+        refs = None
+
+        def edit_pose(self, instruction, character, guide, variants=1,
+                      on_progress=None, seeds=None):
+            PoseKlein.refs = (character.size, guide.size if guide is not None else None)
+            image = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+            for y in range(12, 15):
+                for x in range(12, 15):
+                    image.putpixel((x, y), (255, 0, 0, 255))
+            return [image]
+
+    models.register("klein", PoseKlein)
+    source = Image.new("RGBA", (16, 16), (0, 0, 0, 0))
+    source.putpixel((12, 12), (255, 0, 0, 255))
+    guide = Image.new("RGB", (16, 16), "white")
+
+    async def go(with_guide):
+        async with websockets.connect(f"ws://{HOST}:{PORT}", max_size=64 * 2**20) as ws:
+            await ws.send(json.dumps({
+                "id": "pose", "mode": "pose", "prompt": "contact pose",
+                "target_size": [16, 16], "variants": 1,
+                "background": "keep",
+                "frames": ([{"image": image_to_b64(source)},
+                            {"image": image_to_b64(guide)}]
+                           if with_guide else [{"image": image_to_b64(source)}]),
+            }))
+            while True:
+                msg = json.loads(await ws.recv())
+                if msg["type"] in ("result", "error"):
+                    return msg
+
+    for with_guide in (True, False):
+        result = asyncio.run(go(with_guide))
+        assert result["type"] == "result"
+        frame = image_from_raw(result["images"][0])
+        assert frame.getchannel("A").getbbox() == (12, 12, 15, 15)
+        assert PoseKlein.refs == ((16, 16), (16, 16) if with_guide else None)
+
+
 def test_history_pages_newest_first(server_thread, monkeypatch, tmp_path):
     import json as _json
     for n, (stamp, prompt) in enumerate([("20260101-000000", "old sword"),

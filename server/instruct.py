@@ -29,6 +29,12 @@ T2I_SUFFIX = (" Flat 2D pixel art game sprite, crisp pixels, flat colors,"
 INPAINT_SUFFIX = (" Scale and place the new content to fit naturally onto"
                   " the existing subject; do not enlarge it to fill the"
                   " entire selection.")
+POSE_SUFFIX = (" Image 1 is the source subject. Preserve its distinctive"
+               " appearance, style, colors, framing, scale, and view."
+               " Draw the requested pose on the same canvas.")
+POSE_GUIDE_SUFFIX = (" Image 2 is a pose guide; follow its arrangement and"
+                     " silhouette without copying its drawing style or"
+                     " including guide marks in the output.")
 INPAINT_MARGIN = 2  # sprite pixels grown past the selection, so edge detail survives
 # 512px is plenty for pixel art; 1024px batches overflow 16 GB and WDDM
 # starts paging VRAM through system RAM (observed: 10x+ slowdown).
@@ -468,6 +474,31 @@ class KleinPipeline:
             ).images
             out.extend(img.crop((0, 0, bw, bh)) for img in imgs)
         return [i.convert("RGBA") for i in out]
+
+    def edit_pose(self, instruction, source, guide=None, variants=1,
+                  on_progress=None, seeds=None):
+        """Use a source subject and an optional pose reference on one fixed canvas."""
+        self.load()
+        if guide is not None and source.size != guide.size:
+            raise ValueError("pose guide dimensions must match the source")
+        big_source, (bw, bh) = self._prep_input(source)
+        big_guide = self._prep_input(guide)[0] if guide is not None else None
+        seeds = seeds or self.variant_seeds(None, variants)
+        out = []
+        # Two reference images add tokens and memory; run one output at a time.
+        for index in range(variants):
+            imgs = self._pipe(
+                prompt=instruction + POSE_SUFFIX + (POSE_GUIDE_SUFFIX if guide is not None else ""),
+                image=[big_source, big_guide] if guide is not None else big_source,
+                width=big_source.width, height=big_source.height,
+                guidance_scale=GUIDANCE,
+                num_inference_steps=STEPS,
+                num_images_per_prompt=1,
+                generator=self._generators(seeds[index:index + 1]),
+                callback_on_step_end=self._cb(on_progress, index, 1, variants),
+            ).images
+            out.append(imgs[0].crop((0, 0, bw, bh)).convert("RGBA"))
+        return out
 
     def _inpaint_pipe_obj(self):
         """Shares the resident pipe's already-placed modules (same VRAM, no

@@ -13,7 +13,7 @@ import websockets
 import websockets.exceptions
 
 from server import models
-from server.postprocess import (crop_to_subject, fit_into, mirror_symmetry,
+from server.postprocess import (crop_to_subject, downscale, fit_into, mirror_symmetry,
                                 subject_palette, sprite_palette,
                                 remove_background)
 from server.protocol import ProtocolError, parse_request, error_msg, \
@@ -143,7 +143,13 @@ def _run(req, on_progress, on_stage):
             on_stage("Decoding images")
     pipe = models.get("klein", on_stage=on_stage)
     seeds = pipe.variant_seeds(req.seed, req.variants)
-    if req.mode in ("instruct", "edit"):
+    if req.mode == "pose":
+        raw = pipe.edit_pose(req.prompt, req.frames[0].image,
+                             req.frames[1].image if len(req.frames) == 2 else None,
+                             variants=req.variants,
+                             on_progress=gen_progress, seeds=seeds)
+        palette_src = req.frames[0].image
+    elif req.mode in ("instruct", "edit"):
         # same Klein edit; they differ only in the panel UI
         raw = pipe.edit_by_instruction(req.prompt, req.frames[0].image,
                                        variants=req.variants,
@@ -175,10 +181,15 @@ def _run(req, on_progress, on_stage):
             cut = remove_background(img, tolerance=16,
                                     force=req.background == "remove")
         # Not inpaint: cropping would break its mask alignment.
-        if req.mode in ("generate", "edit") or req.symmetry:
+        if req.mode in ("generate", "edit") or (req.symmetry and req.mode != "pose"):
             cut = crop_to_subject(cut)
-        small = fit_into(cut, req.target_size,
-                         palette=pal or subject_palette(cut, 16))
+        if req.mode == "pose":
+            # Keep the source/guide grid exactly aligned across action frames.
+            small = downscale(cut, req.target_size,
+                              palette=pal or subject_palette(cut, 16))
+        else:
+            small = fit_into(cut, req.target_size,
+                             palette=pal or subject_palette(cut, 16))
         if req.symmetry:
             small = mirror_symmetry(small)
         out.append(small)

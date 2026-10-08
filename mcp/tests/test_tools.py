@@ -131,3 +131,63 @@ def test_import_then_animate_exports_retrievable_sheet(tmp_path, monkeypatch):
             assert any(block.type == "image" for block in inspected.content)
 
     asyncio.run(go())
+
+
+def test_caller_defined_poses_export_fixed_cells_and_metadata(tmp_path, monkeypatch):
+    store = AssetStore(tmp_path / "assets")
+    service = FakeService()
+    monkeypatch.setattr(tools, "store", store)
+    monkeypatch.setattr(tools, "service", service)
+    source = Image.new("RGBA", (32, 32), (0, 0, 0, 0))
+    for y in range(4, 29):
+        for x in range(9, 24):
+            source.putpixel((x, y), (255, 0, 0, 255))
+    asset_id = store.put(source, {"operation": "import"})["asset_id"]
+    guide_path = tmp_path / "curl.png"
+    Image.new("RGB", source.size, "white").save(guide_path)
+    poses = [
+        {"phase": "rest", "instruction": "coiled dragon at rest", "reuse_source": True},
+        {"phase": "curl", "instruction": "curl the tail around the body",
+         "guide_path": str(guide_path), "root_offset": [2, -1]},
+        {"phase": "stretch", "instruction": "stretch the wings", "root_offset": [4, 0]},
+    ]
+
+    async def go():
+        async with Client(tools.mcp) as client:
+            result = await client.call_tool("generate_action_sprite", {
+                "source_id": asset_id, "action": "coil", "poses": poses, "seed": 21,
+                "subject_description": "red dragon", "fps": 7, "pivot": [12, 20],
+            })
+            assert not result.is_error, result.content[0].text
+            data = result.structured_content
+            assert data["frame_count"] == 3
+            assert data["frame_width"] == data["frame_height"] == 32
+            assert [f["root_offset"] for f in data["frames"]] == [
+                [0, 0], [2, -1], [4, 0]]
+            assert [r["seed"] for r in service.requests] == [22, 23]
+            assert [len(r["frames"]) for r in service.requests] == [2, 1]
+            assert data["frames"][0]["visible_bbox"] == [9, 4, 24, 29]
+            assert all(frame["touches_edge"] for frame in data["frames"][1:])
+            assert data["guide_paths"][0] is None
+            assert Path(data["guide_paths"][1]).is_file()
+            assert data["guide_paths"][2] is None
+            assert data["fps"] == 7
+            assert data["pivot"] == [12, 20]
+            assert "sword" not in service.requests[0]["prompt"].lower()
+            assert all(store.get(frame["asset_id"])[1].size == source.size
+                       for frame in data["frames"])
+            _, sheet = store.get_animation(data["frame_set_id"])
+            assert sheet.size == (96, 32)
+
+            selected = await client.call_tool("compose_action_sprite", {
+                "frame_set_id": data["frame_set_id"],
+                "frame_ids": [frame["asset_id"] for frame in data["frames"]],
+            })
+            assert not selected.is_error
+            assert selected.structured_content["selection"] == "selected"
+            assert selected.structured_content["frame_count"] == 3
+            assert selected.structured_content["pivot"] == [12, 20]
+            assert selected.structured_content["frames"][1]["root_offset"] == [2, -1]
+            assert Path(selected.structured_content["guide_paths"][1]).is_file()
+
+    asyncio.run(go())

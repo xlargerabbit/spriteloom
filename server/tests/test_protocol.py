@@ -130,6 +130,18 @@ def test_parse_instruct_accepts_frame():
     assert req.frames[0].image.size == (16, 16)
 
 
+def test_pose_requires_source_and_accepts_optional_guide():
+    b64 = image_to_b64(_red_16())
+    payload = {"id": "p1", "mode": "pose", "prompt": "run contact",
+               "target_size": [16, 16], "frames": [{"image": b64}]}
+    assert len(parse_request(json.dumps(payload)).frames) == 1
+    payload["frames"].append({"image": b64})
+    assert parse_request(json.dumps(payload)).frames[1].image.size == (16, 16)
+    payload["frames"].append({"image": b64})
+    with pytest.raises(ProtocolError, match="optional guide"):
+        parse_request(json.dumps(payload))
+
+
 def test_progress_msg_stage_optional():
     assert "stage" not in json.loads(progress_msg("r", 0.5))
     msg = json.loads(progress_msg("r", 0.0, stage="Loading model..."))

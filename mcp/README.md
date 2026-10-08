@@ -1,6 +1,6 @@
 # Spriteloom MCP server
 
-This is the local, headless agent interface to Spriteloom's GPU service. It exposes `generate_sprite`, `import_sprite`, `refine_sprite`, `inspect_asset`, and `animate_sprite`. The [implementation plan](../docs/MCP_IMPLEMENTATION_PLAN.md) records the scope and build order.
+This is the local, headless agent interface to Spriteloom's GPU service. It exposes `generate_sprite`, `import_sprite`, `refine_sprite`, `inspect_asset`, `animate_sprite`, and the experimental `generate_action_sprite`. The [implementation plan](../docs/MCP_IMPLEMENTATION_PLAN.md) records the initial scope; the [pose-guided animation evaluation](../docs/POSE_GUIDED_ANIMATION_EVALUATION.md) explains the action-sheet approach.
 
 The MCP server uses stdio. It connects to the Spriteloom WebSocket service on `127.0.0.1` and the port in `%APPDATA%/Spriteloom/config.json` (default `8765`). When the service is offline on Windows, it starts the installed service from the repository's `.venv`. It never needs Aseprite. The inference environment and model must first be installed using the normal Spriteloom setup.
 
@@ -93,10 +93,16 @@ for other clients and configuration options.
 3. Call `refine_sprite` with the chosen ID and an instruction. Use `operation="edit"` for a whole-sprite change, `operation="inpaint"` with `[x,y,width,height]` or a mask path for a local change, or `operation="instruct"` for a new view.
 4. Each result has a new ID; the source asset remains available. Use `import_sprite` to begin from an existing local PNG.
 5. Call `animate_sprite` on a chosen asset for `idle_bob`, `bounce`, `pulse`, `recoil`, or `palette_cycle`. It saves individual PNG frames, a spritesheet, a GIF preview, and frame metadata. Set `frames=1` for a static sheet. The optional `pivot=[x,y]` uses source canvas coordinates (default: bottom center). Call `inspect_asset` with the returned frame set ID to view the sheet.
+6. Call `generate_action_sprite` with `source_id`, any `action` name, and 1–16 caller-defined `poses`. Each pose supplies `phase` and `instruction`; it may also supply a same-size `guide_path` PNG, `root_offset: [x,y]`, or `reuse_source: true`. Set `subject_description`, `seed`, `fps`, and `pivot: [x,y]` as needed. The default pivot is the canvas center. A frame without a guide uses its text instruction and source image. No character anatomy, equipment, or timeline is assumed. The tool saves fixed-size frames, supplied guides, a sheet, GIF preview, and per-frame metadata.
+7. Inspect or refine the returned frame asset IDs. Call `compose_action_sprite` with the generated `frame_set_id` and an ordered `frame_ids` list to export a replacement sheet with the same phases, instructions, offsets, and guides.
+
+For example, `poses=[{"phase":"rest","instruction":"remain coiled","reuse_source":true},{"phase":"unfurl","instruction":"unfurl the wings","guide_path":"C:/art/unfurl.png","root_offset":[3,0]}]` describes a two-frame creature sequence. The guide PNG is optional and must match the source canvas.
 
 For inpaint, the MCP server composites the service's transparent patch over the source and saves a complete new PNG. Paths passed to `import_sprite` and `mask_path` are on the same machine as this MCP process.
 
 Animation presets transform pixels from one flattened image. They do not generate new poses or independently moving limbs. The spritesheet uses equal-size transparent cells in row-major order and records each frame rectangle, duration, source and sheet pivots, and row/column in its manifest. PNG frames and sheets retain RGBA pixels; the GIF is a quick preview on a light background.
+
+Pose sheets are experimental. Klein image editing may change a subject's details between frames. Supplied guide images can improve spatial control; text-only frames may need more review. The pose route retains one canvas size and source palette across frames, but visual alignment and pose readability still need inspection before game use. `root_offset` is displacement metadata; it does not shift pixels inside the sheet. Restart a previously started GPU service if it does not recognize the updated `pose` request.
 
 ## Tests
 

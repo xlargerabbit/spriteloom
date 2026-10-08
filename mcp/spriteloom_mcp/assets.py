@@ -77,12 +77,19 @@ class AssetStore:
         return self.root / asset_id / "image.png"
 
     def put_animation(self, frames: list[Image.Image], sheet: Image.Image,
-                      manifest: dict, fps: int) -> dict:
+                      manifest: dict, fps: int,
+                      guides: list[Image.Image | None] | None = None) -> dict:
+        if guides is not None and len(guides) != len(frames):
+            raise ValueError("guide count must match frame count")
         frame_set_id = uuid.uuid4().hex
         folder = self.root / "animations" / frame_set_id
         folder.mkdir(parents=True)
         for index, frame in enumerate(frames):
             self._write(folder / f"frame_{index:02d}.png", png_bytes(frame))
+        if guides is not None:
+            for index, guide in enumerate(guides):
+                if guide is not None:
+                    self._write(folder / f"guide_{index:02d}.png", png_bytes(guide))
         self._write(folder / "sheet.png", png_bytes(sheet))
         self._write(folder / "preview.png", png_bytes(preview(sheet)))
         gif_frames = [preview(frame).convert("RGB") for frame in frames]
