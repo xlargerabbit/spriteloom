@@ -1,5 +1,6 @@
 # Local-only: design docs, sample sprites, agent scratch
-docs/
+docs/*
+!docs/MCP_IMPLEMENTATION_PLAN.md
 samples/
 .superpowers/
 
@@ -16,6 +17,7 @@ notes/
 __pycache__/
 *.pyc
 .venv/
+*.egg-info/
 
 # Models and generation output (large binaries)
 models/

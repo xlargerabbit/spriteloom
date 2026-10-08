@@ -23,6 +23,8 @@ Aseprite 1.3+                         Windows launcher
 
 The launcher starts and supervises the service; the plugin communicates with the service directly. The launcher is not a request proxy.
 
+An optional headless MCP adapter in `mcp/` lets an agent use the same loopback service without Aseprite. It owns persistent asset IDs, sprite refinement chains, and deterministic idle/effect spritesheet export. The MCP process can attach to the launcher-owned service or start its own local service; it stops only a child it started.
+
 ## Runtime components and layers
 
 ### Aseprite extension (`plugin/`)
@@ -83,6 +85,7 @@ The user launches the packaged pywebview application. It detects prerequisites a
 | Inference | PyTorch CUDA (cu128 install path), Diffusers, Transformers, Accelerate, PEFT, bitsandbytes, safetensors; FLUX.2 Klein 4B |
 | Image processing | Pillow, NumPy, SciPy |
 | Packaging | PyInstaller; launcher only |
+| Headless agent adapter | Python MCP SDK, stdio transport, Pillow; code in `mcp/` |
 | Tests | pytest for Python modules; Lua tests and luacheck for plugin modules |
 
 Dependency ranges and install commands live in `server/requirements.txt`, `launcher/requirements.txt`, and `README.md`; consult those files when changing versions or install behavior.
@@ -111,6 +114,7 @@ Dependency ranges and install commands live in `server/requirements.txt`, `launc
 
 ```text
 launcher/       Windows setup and lifecycle UI
+mcp/            Local MCP tools, asset store and deterministic animation
 plugin/         Aseprite Lua extension
 server/         WebSocket API, model lifecycle, inference and postprocess
 assets/         README artwork and icon

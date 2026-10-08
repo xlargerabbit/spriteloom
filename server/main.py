@@ -233,7 +233,8 @@ async def _serve_connection(ws):
             if isinstance(data, dict) and data.get("type") == "ping":
                 # the panel shows a load bar until Klein is resident
                 model = "ready" if models.is_ready("klein") else "loading"
-                pong = {"type": "pong", "model": model}
+                pong = {"type": "pong", "model": model,
+                        "service": "spriteloom", "protocol": 1}
                 if model == "loading":
                     prog = models.load_progress()
                     pong["progress"] = round(prog[0], 3) if prog else 0.0
