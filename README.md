@@ -109,8 +109,8 @@ the GPU:
 
 1. Download the latest build from
    [itch.io](https://vkarach.itch.io/spriteloom) and unzip it anywhere. It
-   has `Spriteloom.exe`, `server/`, and `plugin/` together; nothing else to
-   fetch first.
+   has `Spriteloom.exe`, `server/`, `plugin/`, and the optional `mcp/`
+   package together; nothing else to fetch first.
 2. Windows will likely show a "Windows protected your PC" SmartScreen
    warning — `Spriteloom.exe` isn't code-signed, so it has no reputation
    yet. Click **More info**, then **Run anyway**.
@@ -120,6 +120,10 @@ the GPU:
    installs the packages and the plugin, downloads the model, adds a Start
    Menu shortcut, and prints a live log. Restart Aseprite once the plugin
    is in.
+
+Setup also offers optional **MCP tools** for coding agents. Select that row
+to install the stdio adapter in its own small environment under `mcp/.venv`.
+See [mcp/README.md](mcp/README.md) to connect an agent such as Codex CLI.
 
 **Start** stays disabled until every required piece — including the model —
 is in place; there is no lazy first-run download.
@@ -139,11 +143,18 @@ If you would rather do it by hand:
 With the `.venv` set up this way, `start-server.bat` starts the server in a
 console window instead of through the launcher.
 
-To build the exe yourself from a full clone of this repository:
-`.venv\Scripts\python -m pip install -r launcher\requirements.txt`, then
-`.venv\Scripts\python -m PyInstaller build.spec --distpath .` -- it builds
-straight into the project root as `Spriteloom.exe`, about 15 MB: the model
-and PyTorch stay outside it.
+To build a Windows release zip from a full clone, install the launcher build
+dependencies and run the release script on Windows x64:
+
+```bat
+.venv\Scripts\python -m pip install -r launcher\requirements.txt
+.venv\Scripts\python scripts\build_windows_release.py
+```
+
+The output is `dist/Spriteloom-<version>-windows-x64.zip`. It contains the
+launcher exe and the source files needed for setup and the optional MCP adapter.
+The model, PyTorch, and virtual environments stay outside the archive. See
+[mcp/README.md](mcp/README.md) to configure an stdio MCP client from the zip.
 
 ## Use
 

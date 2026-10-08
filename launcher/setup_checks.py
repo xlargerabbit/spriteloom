@@ -2,6 +2,7 @@
 import os
 import pathlib
 import shutil
+import tomllib
 
 from launcher import plugin_install
 from launcher.paths import MIN_PYTHON, run_command
@@ -21,6 +22,9 @@ DEPS_PROBE = ("import importlib.metadata as m; "
               "'accelerate','peft','bitsandbytes','Pillow','numpy',"
               "'scipy')]; print('ok')")
 TORCH_PROBE = "import importlib.metadata as m; print(m.version('torch'))"
+MCP_PROBE = ("import importlib.metadata as m; "
+             "[m.version(d) for d in ('mcp','websockets','Pillow')]; "
+             "print(m.version('spriteloom-mcp'))")
 
 
 def _cuda_tag(version):
@@ -81,6 +85,28 @@ def _shortcut_item(paths) -> dict:
                  "created" if state == OK else "not created", required=False)
 
 
+def _mcp_item(paths, runner) -> dict:
+    source = paths.root / "mcp" / "pyproject.toml"
+    if not source.is_file():
+        return _item("mcp", "MCP tools", BLOCKED, "not included in this release",
+                     required=False)
+    if not paths.python:
+        return _item("mcp", "MCP tools", BLOCKED, "needs Python 3.11+",
+                     required=False, needs=["python"])
+    try:
+        version = tomllib.loads(source.read_text("utf-8"))["project"]["version"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return _item("mcp", "MCP tools", BLOCKED, "invalid package metadata",
+                     required=False)
+    interpreter = paths.root / "mcp" / ".venv" / "Scripts" / "python.exe"
+    installed = runner([str(interpreter), "-c", MCP_PROBE]) if interpreter.is_file() else None
+    state = OK if installed == version else MISSING
+    detail = version if state == OK else (f"{installed}, {version} available"
+                                         if installed else "not installed")
+    return _item("mcp", "MCP tools", state, detail,
+                 required=False, needs=["python"])
+
+
 def refresh_live(items: list[dict], paths) -> list[dict]:
     # filesystem-only, no subprocess -- cheap enough to run on every poll
     fresh = {"plugin": _plugin_item, "model": _model_item,
@@ -136,5 +162,6 @@ def check_all(paths, run=None) -> list[dict]:
 
     items.append(_plugin_item(paths))
     items.append(_model_item(paths))
+    items.append(_mcp_item(paths, runner))
     items.append(_shortcut_item(paths))
     return items

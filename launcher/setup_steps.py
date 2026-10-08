@@ -11,12 +11,13 @@ from launcher.server_proc import (NO_WINDOW, assign_to_job, clean_line,
 # torch before deps: bitsandbytes pulls torch>=2.3,<3 on its own, and if
 # nothing satisfies that yet, pip installs a plain CPU build here that the
 # torch step then overwrites with the CUDA one
-ORDER = ("venv", "torch", "deps", "plugin", "model", "shortcut")
+ORDER = ("venv", "torch", "deps", "plugin", "model", "mcp", "shortcut")
 LABELS = {"venv": "Creating virtual environment",
           "deps": "Installing server dependencies",
           "torch": "Installing PyTorch with CUDA",
           "plugin": "Installing the Aseprite plugin",
           "model": "Downloading the model",
+          "mcp": "Installing MCP tools",
           "shortcut": "Creating a Start Menu shortcut"}
 TORCH_INDEX = "https://download.pytorch.org/whl/cu128"
 MODEL_ID = "black-forest-labs/FLUX.2-klein-4B"
@@ -159,6 +160,8 @@ class Runner:
     def _one(self, step) -> bool:
         if step == "plugin":
             return self._plugin()
+        if step == "mcp":
+            return self._mcp()
         if step == "shortcut":
             return self._shortcut()
         cmd = self.commands.get(step) or command(step, self.paths)
@@ -178,6 +181,25 @@ class Runner:
             return False
         self.on_log("plugin copied, restart Aseprite")
         return True
+
+    def _mcp(self) -> bool:
+        source = self.paths.root / "mcp"
+        if not (source / "pyproject.toml").is_file():
+            self.on_log("MCP package is missing from this release")
+            return False
+        if not self.paths.python:
+            self.on_log("Python 3.11+ is needed to install MCP tools")
+            return False
+        interpreter = source / ".venv" / "Scripts" / "python.exe"
+        if not interpreter.is_file():
+            if not self._spawn([str(self.paths.python), "-m", "venv",
+                                str(source / ".venv")]):
+                return False
+        if self.cancelled:
+            return False
+        return self._spawn([str(interpreter), "-m", "pip", "install",
+                            "--progress-bar", "raw", "--no-compile",
+                            "--upgrade", "-e", str(source)])
 
     def _shortcut(self) -> bool:
         exe = self.paths.root / "Spriteloom.exe"

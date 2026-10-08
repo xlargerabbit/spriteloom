@@ -156,3 +156,19 @@ def test_shortcut_ok_once_the_lnk_exists(tmp_path, monkeypatch):
     items = by_id(setup_checks.check_all(make_paths(tmp_path),
                                          run=lambda cmd: None))
     assert items["shortcut"]["state"] == setup_checks.OK
+
+
+def test_mcp_is_optional_and_detects_installed_version(tmp_path):
+    p = make_paths(tmp_path)
+    package = p.root / "mcp"
+    package.mkdir()
+    (package / "pyproject.toml").write_text(
+        '[project]\nname = "spriteloom-mcp"\nversion = "0.1.0"\n', encoding="utf-8")
+    python = package / ".venv" / "Scripts" / "python.exe"
+    python.parent.mkdir(parents=True)
+    python.write_text("", encoding="utf-8")
+    items = by_id(setup_checks.check_all(p, run=lambda cmd: "0.1.0"))
+    assert items["mcp"]["state"] == setup_checks.OK
+    assert items["mcp"]["required"] is False
+    items = by_id(setup_checks.check_all(p, run=lambda cmd: "0.0.9"))
+    assert items["mcp"]["state"] == setup_checks.MISSING

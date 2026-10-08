@@ -73,7 +73,7 @@ Generation history and tuning artifacts are written under `output/`, one timesta
 
 ### Setup and launch
 
-The user launches the packaged pywebview application. It detects prerequisites and offers setup steps for the Python environment, packages, plugin, model, and shortcut. Setup is explicit; Start remains unavailable until required pieces are installed. On Start, the launcher chooses/probes a port, starts the service subprocess, and monitors readiness/log output. It closes the subprocess job when the launcher exits.
+The user launches the packaged pywebview application. It detects prerequisites and offers setup steps for the Python environment, packages, plugin, model, optional MCP tools, and shortcut. MCP tools install into `mcp/.venv` from the sidecar `mcp/` package; they do not gate Start. Setup is explicit; Start remains unavailable until required pieces are installed. On Start, the launcher chooses/probes a port, starts the service subprocess, and monitors readiness/log output. It closes the subprocess job when the launcher exits.
 
 ## Technology stack
 

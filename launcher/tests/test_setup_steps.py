@@ -49,6 +49,25 @@ def test_torch_step_runs_before_deps():
     assert setup_steps.ORDER.index("torch") < setup_steps.ORDER.index("deps")
 
 
+def test_mcp_install_uses_separate_venv_and_bundled_package(tmp_path):
+    p = make_paths(tmp_path)
+    source = p.root / "mcp"
+    source.mkdir()
+    (source / "pyproject.toml").write_text("[project]\nversion = '0.1.0'\n")
+    runner = setup_steps.Runner(p, on_event=lambda *a: None, on_log=lambda line: None)
+    commands = []
+
+    def spawn(cmd):
+        commands.append(cmd)
+        return True
+
+    runner._spawn = spawn
+    assert runner._mcp() is True
+    assert commands[0] == [str(p.python), "-m", "venv", str(source / ".venv")]
+    assert commands[1][0] == str(source / ".venv" / "Scripts" / "python.exe")
+    assert commands[1][-2:] == ["-e", str(source)]
+
+
 def test_commands_use_the_raw_progress_bar(tmp_path):
     p = make_paths(tmp_path)
     assert "--progress-bar" in setup_steps.command("deps", p)

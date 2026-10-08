@@ -6,16 +6,85 @@ The MCP server uses stdio. It connects to the Spriteloom WebSocket service on `1
 
 ## Install
 
-From the repository root on Windows:
+The Windows release zip includes this `mcp/` package. In the launcher, open
+**Setup**, select the optional **MCP tools** row, and press **Install selected**.
+The launcher creates `mcp/.venv` and installs the adapter there. The GPU
+environment and model are separate Setup items. Configure an stdio MCP client
+to run the installed executable (replace the example path):
+
+```json
+{
+  "command": "C:\\Spriteloom\\mcp\\.venv\\Scripts\\spriteloom-mcp.exe",
+  "env": { "SPRITELOOM_ROOT": "C:\\Spriteloom" }
+}
+```
+
+To install without the launcher, run these commands from the extracted release
+root. This creates the same environment as the Setup row:
 
 ```bat
 py -3.11 -m venv mcp\.venv
 mcp\.venv\Scripts\python -m pip install -e mcp
 ```
 
-Configure an MCP client to run `mcp\.venv\Scripts\spriteloom-mcp.exe` using an absolute path. If the client launches it from another working directory, set `SPRITELOOM_ROOT` to the Spriteloom installation directory.
+You can also use [uv](https://docs.astral.sh/uv/) to run the bundled package
+without the launcher installation: `uv tool run --python 3.11 --from
+C:\Spriteloom\mcp spriteloom-mcp`. Set `SPRITELOOM_ROOT` in the MCP client
+environment because uv keeps its tool environment outside the release folder.
 
 The optional `SPRITELOOM_MCP_ASSETS` environment variable selects where generated assets are saved. By default they go to `%APPDATA%/Spriteloom/mcp-assets/`, one folder per asset ID. Set `SPRITELOOM_MCP_AUTOSTART=0` if you prefer to start the Spriteloom service in the launcher yourself.
+
+## Configure Codex CLI on Windows
+
+This example assumes the release zip was extracted to `C:\Spriteloom` and
+Codex CLI runs on that same Windows machine. Change both paths if you extracted
+it elsewhere. This guide uses native Windows Codex; WSL needs different path
+and networking setup.
+
+1. Run `Spriteloom.exe`, open **Setup**, and select **MCP tools**. Press
+   **Install selected** and wait until the row shows the installed version.
+   Complete the server and model Setup items too before generating sprites.
+   Confirm `codex --version` works in PowerShell.
+2. Register the installed stdio server in PowerShell. Codex starts the MCP
+   adapter when needed; the adapter connects to the local GPU service.
+
+   ```powershell
+   codex mcp add spriteloom --env 'SPRITELOOM_ROOT=C:\Spriteloom' -- 'C:\Spriteloom\mcp\.venv\Scripts\spriteloom-mcp.exe'
+   ```
+
+3. Open `$HOME\.codex\config.toml` and add these lines immediately below
+   the existing `[mcp_servers.spriteloom]` header. Keep its `command`, `args`,
+   and `env` entries. The tool timeout permits a long model load or generation
+   request.
+
+   ```toml
+   startup_timeout_sec = 120
+   tool_timeout_sec = 900
+   ```
+
+4. Run `codex mcp get spriteloom` to check the saved command and environment,
+   then start a new Codex session. In its terminal UI, run `/mcp` and check
+   that Spriteloom is available. Ask Codex to use `import_sprite` on a local
+   PNG and then `inspect_asset` on the returned asset ID; these two tools work
+   without a GPU request. Try `generate_sprite` after the service is ready.
+
+You can use a config file entry instead of step 2. Add this to
+`$HOME\.codex\config.toml` (TOML single-quoted strings keep Windows
+backslashes literal):
+
+```toml
+[mcp_servers.spriteloom]
+command = 'C:\Spriteloom\mcp\.venv\Scripts\spriteloom-mcp.exe'
+startup_timeout_sec = 120
+tool_timeout_sec = 900
+
+[mcp_servers.spriteloom.env]
+SPRITELOOM_ROOT = 'C:\Spriteloom'
+```
+
+Codex CLI and its IDE extension share MCP configuration. See the
+[official Codex MCP guide](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)
+for other clients and configuration options.
 
 ## Agent workflow
 
