@@ -6,6 +6,19 @@ on:
   pull_request:
 
 jobs:
+  mcp:
+    name: MCP tests (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install MCP adapter and test dependencies
+        run: pip install -e "mcp[test]"
+      - name: Run tests
+        run: python -m pytest mcp/tests -q
+
   server:
     name: Server tests (pytest)
     runs-on: ubuntu-latest

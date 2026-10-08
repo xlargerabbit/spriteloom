@@ -8,7 +8,7 @@ This plan does not include controlling Aseprite or editing `.aseprite` documents
 
 ## Implementation status
 
-The local stdio MCP server, its five tools, persistent asset store, and deterministic idle/effect spritesheet export now exist in `mcp/`. A local protocol smoke flow has exercised generate → inpaint → inspect against a simulated Spriteloom WebSocket service; a separate flow has exercised import → animate → inspect through MCP. A real GPU generation run on supported Windows hardware is still needed before treating Phase 1 as complete. The server remains loopback-only.
+The local stdio MCP server, its five tools, persistent asset store, and deterministic idle/effect spritesheet export now exist in `mcp/`. Phase 2 supports fixed-canvas one-frame and motion sheets, custom pivots, row/column frame metadata, lossless RGBA PNG frames, and a GIF preview. The local test suite has exercised generate → inpaint → inspect against a simulated Spriteloom WebSocket service and import → animate → inspect through MCP. A real GPU generation run on supported Windows hardware is still needed before treating Phase 1 as complete. The server remains loopback-only.
 
 ## Repository shape
 

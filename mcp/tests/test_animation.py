@@ -38,6 +38,39 @@ def test_palette_cycle_changes_colors_without_changing_alpha():
     assert [frame.getpixel((5, 4))[3] for frame in frames] == [128, 128]
 
 
+def test_palette_cycle_ignores_hidden_colors_and_preserves_rgba():
+    source = Image.new("RGBA", (3, 1), (0, 255, 0, 0))
+    source.putpixel((0, 0), (255, 0, 0, 128))
+    source.putpixel((1, 0), (0, 0, 255, 255))
+    frames, _ = animate(source, "palette_cycle", count=2, strength=1)
+    assert frames[0].getpixel((4, 4)) == (255, 0, 0, 128)
+    assert frames[1].getpixel((4, 4)) == (0, 0, 255, 128)
+    assert frames[0].getpixel((6, 4)) == (0, 255, 0, 0)
+
+
+def test_default_strength_cycles_two_color_palette():
+    source = Image.new("RGBA", (2, 1), (255, 0, 0, 255))
+    source.putpixel((1, 0), (0, 0, 255, 255))
+    frames, _ = animate(source, "palette_cycle", count=2, strength=2)
+    assert frames[0].getpixel((4, 4)) != frames[1].getpixel((4, 4))
+
+
+def test_pulse_keeps_custom_pivot_fixed_and_pixels_inside_canvas():
+    source = Image.new("RGBA", (100, 20), (240, 20, 10, 255))
+    frames, pivot = animate(source, "pulse", count=4, strength=4, pivot=(0, 0))
+    assert pivot == (16, 16)
+    assert frames[1].getbbox() == (16, 16, 132, 39)
+
+
+def test_one_frame_sheet_is_static_source_on_transparent_canvas():
+    source = Image.new("RGBA", (2, 1), (60, 70, 80, 128))
+    frames, _ = animate(source, "bounce", count=1, strength=2)
+    sheet, rects = spritesheet(frames)
+    assert sheet.tobytes() == frames[0].tobytes()
+    assert rects == [{"index": 0, "x": 0, "y": 0, "width": 10, "height": 9}]
+    assert frames[0].getpixel((4, 4)) == (60, 70, 80, 128)
+
+
 def test_animation_rejects_excessive_sheet_size():
     source = Image.new("RGBA", (2000, 2000), "red")
     with pytest.raises(ValueError, match="32 million pixels"):

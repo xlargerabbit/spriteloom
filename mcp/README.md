@@ -92,11 +92,11 @@ for other clients and configuration options.
 2. Call `inspect_asset` to view a chosen variant. Set `full_size=true` to return its full PNG through MCP.
 3. Call `refine_sprite` with the chosen ID and an instruction. Use `operation="edit"` for a whole-sprite change, `operation="inpaint"` with `[x,y,width,height]` or a mask path for a local change, or `operation="instruct"` for a new view.
 4. Each result has a new ID; the source asset remains available. Use `import_sprite` to begin from an existing local PNG.
-5. Call `animate_sprite` on a chosen asset for `idle_bob`, `bounce`, `pulse`, `recoil`, or `palette_cycle`. It saves individual PNG frames, a spritesheet, a GIF preview, and frame metadata. Call `inspect_asset` with the returned frame set ID to view the sheet.
+5. Call `animate_sprite` on a chosen asset for `idle_bob`, `bounce`, `pulse`, `recoil`, or `palette_cycle`. It saves individual PNG frames, a spritesheet, a GIF preview, and frame metadata. Set `frames=1` for a static sheet. The optional `pivot=[x,y]` uses source canvas coordinates (default: bottom center). Call `inspect_asset` with the returned frame set ID to view the sheet.
 
 For inpaint, the MCP server composites the service's transparent patch over the source and saves a complete new PNG. Paths passed to `import_sprite` and `mask_path` are on the same machine as this MCP process.
 
-Animation presets transform pixels from one flattened image. They do not generate new poses or independently moving limbs. The spritesheet uses equal-size transparent cells and records each frame rectangle, duration, and pivot in its manifest.
+Animation presets transform pixels from one flattened image. They do not generate new poses or independently moving limbs. The spritesheet uses equal-size transparent cells in row-major order and records each frame rectangle, duration, source and sheet pivots, and row/column in its manifest. PNG frames and sheets retain RGBA pixels; the GIF is a quick preview on a light background.
 
 ## Tests
 

@@ -198,15 +198,21 @@ def animate_sprite(
     frames: Annotated[int, Field(ge=1, le=16)] = 8,
     fps: Annotated[int, Field(ge=1, le=30)] = 8,
     strength: Annotated[int, Field(ge=1, le=4)] = 2,
+    pivot: list[int] | None = None,
 ) -> CallToolResult:
     """Make a repeatable idle/effect animation and spritesheet from one sprite."""
     try:
         _, source = store.get(source_id)
-        images, pivot = animate(source, motion, frames, strength)
+        if pivot is not None and (len(pivot) != 2 or any(type(v) is not int for v in pivot)):
+            raise ValueError("pivot must be [x, y] in source canvas coordinates")
+        source_pivot = tuple(pivot) if pivot is not None else (source.width // 2, source.height)
+        images, canvas_pivot = animate(source, motion, frames, strength, source_pivot)
         sheet, rects = spritesheet(images)
         for rect in rects:
             rect["file"] = f"frame_{rect['index']:02d}.png"
             rect["duration_ms"] = round(1000 / fps)
+            rect["column"] = rect["index"] % min(4, frames)
+            rect["row"] = rect["index"] // min(4, frames)
         record = store.put_animation(images, sheet, {
             "source_id": source_id,
             "motion": motion,
@@ -215,7 +221,10 @@ def animate_sprite(
             "frame_count": frames,
             "frame_width": images[0].width,
             "frame_height": images[0].height,
-            "pivot": list(pivot),
+            "columns": min(4, frames),
+            "rows": (frames + min(4, frames) - 1) // min(4, frames),
+            "source_pivot": list(source_pivot),
+            "pivot": list(canvas_pivot),
             "frames": rects,
         }, fps)
         data = _public_animation(record)

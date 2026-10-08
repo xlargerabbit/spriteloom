@@ -108,12 +108,18 @@ def test_import_then_animate_exports_retrievable_sheet(tmp_path, monkeypatch):
             asset_id = imported.structured_content["assets"][0]["asset_id"]
             animated = await client.call_tool("animate_sprite", {
                 "source_id": asset_id, "motion": "idle_bob", "frames": 8,
-                "fps": 8,
+                "fps": 8, "pivot": [2, 7],
             })
             assert not animated.is_error
             data = animated.structured_content
             assert data["frame_count"] == 8
             assert len(data["frames"]) == 8
+            assert data["source_pivot"] == [2, 7]
+            assert data["pivot"] == [6, 11]
+            assert data["columns"] == 4 and data["rows"] == 2
+            assert [(frame["row"], frame["column"]) for frame in data["frames"]] == [
+                (i // 4, i % 4) for i in range(8)
+            ]
             assert all(Path(path).is_file() for path in data["frame_paths"])
             assert Path(data["sheet_path"]).is_file()
             assert Path(data["preview_gif_path"]).is_file()
